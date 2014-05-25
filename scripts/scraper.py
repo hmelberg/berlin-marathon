@@ -120,17 +120,43 @@ def cleanData(jData):
         abbreviations = { row['Abbreviation']:row['ISO 3166-1 alpha-3'] for row in rows }
 
     for row in data:
+
         name = re.sub( r"[-.,_'!?0-9]+|\s+", '', ( row['forename'] + row['surname'] ).lower() )
         nameHash = hashlib.sha1( name.encode() ).hexdigest()
         row['name'] = nameHash
+
         row['nationality'] = abbreviations.get( row['nationality'], row['nationality'] )
+        if not row['nationality']:
+            row['nationality'] = 'XXX'
+
+        ac = row['ageClass']
+        if ac in {'M','W'} or not ac:
+            ac = '0'
+        elif ac[0] in {'M','W'} and len(ac) > 1:
+            ac = ac[1:]
+        if ac == 'JA':
+            ac = 'U20'
+        if ac == 'H':
+            ac = '20'
+        row['ageClass'] = ac
+
+        netTime = datetime.datetime.strptime( row['netTime'], '%H:%M:%S' )
+        netTimeDelta = datetime.timedelta( hours=netTime.hour, minutes=netTime.minute, seconds=netTime.second )
+        row['netTime'] = netTimeDelta.seconds
+
+        clockTime = datetime.datetime.strptime( row['clockTime'], '%H:%M:%S' )        
+        clockTimeDelta = datetime.timedelta( hours=clockTime.hour, minutes=clockTime.minute, seconds=clockTime.second )
+        row['clockTime'] = clockTimeDelta.seconds
+
+        row['place'] = int( row['place'] )
+
         del row['forename']
         del row['surname']
         del row['team']
         del row['id']
         del row['bib']
 
-    return data
+    return sorted( data, key=lambda k: k['place'] )
 
 def add2dataset(jData,year):
     data = cleanData(jData)
